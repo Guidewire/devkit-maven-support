@@ -5,6 +5,7 @@ import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.roots.LibraryOrderEntry;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.OrderEntry;
+import com.intellij.openapi.roots.impl.libraries.LibraryEx;
 import com.intellij.openapi.roots.libraries.Library;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.devkit.module.PluginModuleType;
@@ -63,7 +64,9 @@ public class PluginModuleImporter extends MavenImporter {
           // will treat such a library as having "user changes" and will not remove it.
           // Therefore, we forcefully commit all changes.
           Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
-          modifiableModel.commit();
+          if (!((LibraryEx) modifiableModel).isDisposed()) {
+            modifiableModel.commit();
+          }
         }
       }
     }
