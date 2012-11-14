@@ -2,7 +2,7 @@
   <id>com.guidewire.build.ijdevkitmvn</id>
   <name>Intellij plugin development with Maven</name>
   <description>Intellij plugin to support plugin development with Maven</description>
-  <version>0.3.0</version>
+  <version>${project.version}</version>
 
   <vendor email="buildmaster-dev@guidewire.com.com">Guidewire Software</vendor>
   <idea-version since-build="117.105"/>
