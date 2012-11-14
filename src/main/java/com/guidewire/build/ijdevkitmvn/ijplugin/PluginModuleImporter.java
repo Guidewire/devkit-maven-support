@@ -51,7 +51,6 @@ public class PluginModuleImporter extends MavenImporter {
         LibraryOrderEntry loe = (LibraryOrderEntry) entry;
         if (loe.getLibraryName().startsWith("Maven: com.jetbrains.intellij.")) {
           rootModel.removeOrderEntry(entry);
-          modelsProvider.removeLibrary(loe.getLibrary());
         }
       }
     }
