@@ -78,14 +78,13 @@ public class PluginModuleImporter extends MavenImporter {
               Method m;
               try {
                 m = LibraryImpl.class.getDeclaredMethod("copyRootsFrom", LibraryImpl.class);
-              } catch(NoSuchMethodError e) {
+              } catch (NoSuchMethodException e) {
                 // In Ultimate, name is "c"
                 m = LibraryImpl.class.getDeclaredMethod("c", LibraryImpl.class);
               }
               m.setAccessible(true);
               m.invoke(loe.getLibrary(), modifiableModel);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
               // Just log and continue
               e.printStackTrace();
             }
