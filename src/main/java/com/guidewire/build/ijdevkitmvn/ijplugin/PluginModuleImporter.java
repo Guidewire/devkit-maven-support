@@ -1,29 +1,50 @@
 package com.guidewire.build.ijdevkitmvn.ijplugin;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleType;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.LibraryOrderEntry;
 import com.intellij.openapi.roots.ModifiableRootModel;
+import com.intellij.openapi.roots.ModuleRootManager;
+import com.intellij.openapi.roots.ModuleRootModel;
 import com.intellij.openapi.roots.OrderEntry;
+import com.intellij.openapi.roots.OrderEnumerator;
+import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.roots.impl.libraries.LibraryEx;
 import com.intellij.openapi.roots.impl.libraries.LibraryImpl;
+import com.intellij.openapi.roots.impl.libraries.ProjectLibraryTable;
 import com.intellij.openapi.roots.libraries.Library;
+import com.intellij.openapi.roots.libraries.LibraryTable;
+import com.intellij.util.Processor;
+import gnu.trove.THashMap;
+import gnu.trove.THashSet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.devkit.module.PluginModuleType;
 import org.jetbrains.idea.maven.importing.MavenImporter;
 import org.jetbrains.idea.maven.importing.MavenModifiableModelsProvider;
 import org.jetbrains.idea.maven.importing.MavenRootModelAdapter;
 import org.jetbrains.idea.maven.model.MavenConstants;
+import org.jetbrains.idea.maven.project.MavenConsole;
+import org.jetbrains.idea.maven.project.MavenEmbeddersManager;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectChanges;
 import org.jetbrains.idea.maven.project.MavenProjectsProcessorTask;
 import org.jetbrains.idea.maven.project.MavenProjectsTree;
 import org.jetbrains.idea.maven.project.SupportedRequestType;
+import org.jetbrains.idea.maven.utils.MavenProcessCanceledException;
+import org.jetbrains.idea.maven.utils.MavenProgressIndicator;
+import org.jetbrains.idea.maven.utils.MavenUtil;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  */
@@ -56,40 +77,85 @@ public class PluginModuleImporter extends MavenImporter {
     // Remove all entries with groupIds starting from com.jetbrains.intellij.
     // They should be provided through IntelliJ SDK
     ModifiableRootModel rootModel = mavenRootModelAdapter.getRootModel();
+    List<Library> libraries = new ArrayList<Library>();
 
     for (OrderEntry entry : rootModel.getOrderEntries()) {
       if (entry instanceof LibraryOrderEntry) {
         LibraryOrderEntry loe = (LibraryOrderEntry) entry;
-        if (loe.getLibraryName().startsWith("Maven: com.jetbrains.intellij.")) {
+        if (loe.getLibraryName().startsWith("Maven: " + IDEA_SDK_PREFIX)) {
           rootModel.removeOrderEntry(entry);
-
-          // XXX: If library is not used anymore, it will not get properly commited. As a result,
-          // roots of type CLASSES will be empty. MavenProjectImporter.removeUnusedProjectLibraries
-          // will treat such a library as having "user changes" and will not remove it.
-          // Therefore, we forcefully "commit" root URLs.
-          // We cannot use "commit" method since there is a chance library will be committed again
-          // later, which will generate an exception.
-          // So, we just copy roots to make MavenProjectImporter.removeUnusedProjectLibraries happy.
-          Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
-          if (!((LibraryEx) modifiableModel).isDisposed()) {
-
-
-            try {
-              Method m;
-              try {
-                m = LibraryImpl.class.getDeclaredMethod("copyRootsFrom", LibraryImpl.class);
-              } catch (NoSuchMethodException e) {
-                // In Ultimate, name is "c"
-                m = LibraryImpl.class.getDeclaredMethod("c", LibraryImpl.class);
-              }
-              m.setAccessible(true);
-              m.invoke(loe.getLibrary(), modifiableModel);
-            } catch (Exception e) {
-              // Just log and continue
-              e.printStackTrace();
-            }
-          }
+          libraries.add(loe.getLibrary());
         }
+      }
+    }
+
+    // Workaround for Maven plugin bug which does not allow newly created unused libraries to be properly removed
+    // We schedule our own post-processing task that will clean out unused libraries
+    scheduleAnalyzeLibraryTask(mavenProjectsProcessorTasks, libraries);
+  }
+
+  private void scheduleAnalyzeLibraryTask(List<MavenProjectsProcessorTask> mavenProjectsProcessorTasks, List<Library> libraries) {
+    // First, look if task is in the list already
+    RemoveUnusedLibrariesTask task = null;
+    for (MavenProjectsProcessorTask t : mavenProjectsProcessorTasks) {
+      if (t instanceof RemoveUnusedLibrariesTask) {
+        task = (RemoveUnusedLibrariesTask) t;
+        break;
+      }
+    }
+
+    // Create new task
+    if (task == null) {
+      task = new RemoveUnusedLibrariesTask();
+      mavenProjectsProcessorTasks.add(task);
+    }
+
+    // Schedule task
+    task.addLibaries(libraries);
+  }
+
+  private static class RemoveUnusedLibrariesTask implements MavenProjectsProcessorTask {
+    private final Set<Library> _libraries = new THashSet<Library>();
+
+    public void addLibaries(Collection<Library> libraries) {
+      _libraries.addAll(libraries);
+    }
+
+    @Override
+    public void perform(Project project, MavenEmbeddersManager embeddersManager, MavenConsole console, MavenProgressIndicator indicator) throws MavenProcessCanceledException {
+      if (!_libraries.isEmpty()) {
+        removeUnusedProjectLibraries(project);
+      }
+    }
+
+    private void removeUnusedProjectLibraries(Project project) {
+      final Set<Library> unusedLibraries = new THashSet<Library>(_libraries);
+      ModuleManager moduleManager = ModuleManager.getInstance(project);
+      for (Module m : moduleManager.getModules()) {
+        OrderEnumerator.orderEntries(m).forEach(new Processor<OrderEntry>() {
+          @Override
+          public boolean process(OrderEntry orderEntry) {
+            if (orderEntry instanceof LibraryOrderEntry) {
+              Library lib = ((LibraryOrderEntry) orderEntry).getLibrary();
+              unusedLibraries.remove(lib);
+            }
+            return true;
+          }
+        });
+      }
+
+      // Remove all unused libraries
+      if (!unusedLibraries.isEmpty()) {
+        final LibraryTable.ModifiableModel rootModel = ProjectLibraryTable.getInstance(project).getModifiableModel();
+        for (Library lib : unusedLibraries) {
+          rootModel.removeLibrary(lib);
+        }
+        MavenUtil.invokeAndWaitWriteAction(project, new Runnable() {
+          @Override
+          public void run() {
+            rootModel.commit();
+          }
+        });
       }
     }
   }
