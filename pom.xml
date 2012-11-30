@@ -4,7 +4,7 @@
 
   <groupId>com.guidewire.build</groupId>
   <artifactId>devkit-maven-support</artifactId>
-  <version>0.3.6-SNAPSHOT</version>
+  <version>0.3.6</version>
   <packaging>ij-plugin</packaging>
 
   <name>IntelliJ plugin that integrates DevKit and Maven plugins.</name>
@@ -56,7 +56,7 @@
   <scm>
     <developerConnection>scm:git:git@gh:build/devkit-maven-support.git</developerConnection>
     <connection>scm:git://gh/build/devkit-maven-support</connection>
-    <tag>HEAD</tag>
+    <tag>devkit-maven-support-0.3.6</tag>
   </scm>
 
   <build>
