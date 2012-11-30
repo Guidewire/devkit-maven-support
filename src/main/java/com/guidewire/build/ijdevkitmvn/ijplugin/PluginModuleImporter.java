@@ -59,14 +59,14 @@ public class PluginModuleImporter extends MavenImporter {
         if (loe.getLibraryName().startsWith("Maven: com.jetbrains.intellij.")) {
           rootModel.removeOrderEntry(entry);
 
-          // XXX: If library is not used anymore, it will get properly commited. As a result,
+          // XXX: If library is not used anymore, it will not get properly commited. As a result,
           // roots of type CLASSES will be empty. MavenProjectImporter.removeUnusedProjectLibraries
           // will treat such a library as having "user changes" and will not remove it.
           // Therefore, we forcefully commit all changes.
-          Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
-          if (!((LibraryEx) modifiableModel).isDisposed()) {
-            modifiableModel.commit();
-          }
+//          Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
+//          if (!((LibraryEx) modifiableModel).isDisposed()) {
+//            modifiableModel.commit();
+//          }
         }
       }
     }
