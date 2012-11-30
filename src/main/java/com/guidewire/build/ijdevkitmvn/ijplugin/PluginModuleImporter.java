@@ -72,11 +72,20 @@ public class PluginModuleImporter extends MavenImporter {
           // So, we just copy roots to make MavenProjectImporter.removeUnusedProjectLibraries happy.
           Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
           if (!((LibraryEx) modifiableModel).isDisposed()) {
+
+
             try {
-              Method m = LibraryImpl.class.getDeclaredMethod("copyRootsFrom", LibraryImpl.class);
+              Method m;
+              try {
+                m = LibraryImpl.class.getDeclaredMethod("copyRootsFrom", LibraryImpl.class);
+              } catch(NoSuchMethodError e) {
+                // In Ultimate, name is "c"
+                m = LibraryImpl.class.getDeclaredMethod("c", LibraryImpl.class);
+              }
               m.setAccessible(true);
               m.invoke(loe.getLibrary(), modifiableModel);
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
               // Just log and continue
               e.printStackTrace();
             }
