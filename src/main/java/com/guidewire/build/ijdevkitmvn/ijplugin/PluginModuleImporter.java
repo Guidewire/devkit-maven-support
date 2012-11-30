@@ -5,6 +5,9 @@ import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.roots.LibraryOrderEntry;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.OrderEntry;
+import com.intellij.openapi.roots.impl.libraries.LibraryEx;
+import com.intellij.openapi.roots.impl.libraries.LibraryImpl;
+import com.intellij.openapi.roots.libraries.Library;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.devkit.module.PluginModuleType;
 import org.jetbrains.idea.maven.importing.MavenImporter;
@@ -17,6 +20,7 @@ import org.jetbrains.idea.maven.project.MavenProjectsProcessorTask;
 import org.jetbrains.idea.maven.project.MavenProjectsTree;
 import org.jetbrains.idea.maven.project.SupportedRequestType;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +62,25 @@ public class PluginModuleImporter extends MavenImporter {
         LibraryOrderEntry loe = (LibraryOrderEntry) entry;
         if (loe.getLibraryName().startsWith("Maven: com.jetbrains.intellij.")) {
           rootModel.removeOrderEntry(entry);
+
+          // XXX: If library is not used anymore, it will not get properly commited. As a result,
+          // roots of type CLASSES will be empty. MavenProjectImporter.removeUnusedProjectLibraries
+          // will treat such a library as having "user changes" and will not remove it.
+          // Therefore, we forcefully "commit" root URLs.
+          // We cannot use "commit" method since there is a chance library will be committed again
+          // later, which will generate an exception.
+          // So, we just copy roots to make MavenProjectImporter.removeUnusedProjectLibraries happy.
+          Library.ModifiableModel modifiableModel = modelsProvider.getLibraryModel(loe.getLibrary());
+          if (!((LibraryEx) modifiableModel).isDisposed()) {
+            try {
+              Method m = LibraryImpl.class.getDeclaredMethod("copyRootsFrom", LibraryImpl.class);
+              m.setAccessible(true);
+              m.invoke(loe.getLibrary(), modifiableModel);
+            } catch (Exception e) {
+              // Just log and continue
+              e.printStackTrace();
+            }
+          }
         }
       }
     }
