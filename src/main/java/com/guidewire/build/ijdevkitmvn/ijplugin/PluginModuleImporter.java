@@ -54,6 +54,7 @@ public class PluginModuleImporter extends MavenImporter {
   public static final String IDEA_SDK_PREFIX = "com.jetbrains.intellij.";
   public static final String IJPLUGIN_GROUP_ID = "com.guidewire.build";
   public static final String IJPLUGIN_ARTIFACT_ID = "ijplugin-maven-plugin";
+  public static final String IJPLUGIN_PROPERTY = "ij.plugin";
 
 
   public PluginModuleImporter() {
@@ -170,8 +171,13 @@ public class PluginModuleImporter extends MavenImporter {
   @Override
   public boolean isApplicable(MavenProject mavenProject) {
     String type = mavenProject.getPackaging();
-    return (super.isApplicable(mavenProject) && MavenConstants.TYPE_JAR.equals(type)) ||
-            IJ_PLUGIN_PACKAGING.equals(type);
+    if (IJ_PLUGIN_PACKAGING.equals(type)) {
+      return true;
+    } else if (MavenConstants.TYPE_JAR.equals(type)) {
+      return super.isApplicable(mavenProject) ||
+              Boolean.valueOf(mavenProject.getProperties().getProperty(IJPLUGIN_PROPERTY));
+    }
+    return false;
   }
 
   @Override
