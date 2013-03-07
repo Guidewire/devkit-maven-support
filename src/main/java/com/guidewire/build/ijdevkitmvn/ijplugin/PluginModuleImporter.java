@@ -34,6 +34,8 @@ import org.jetbrains.idea.maven.utils.MavenProcessCanceledException;
 import org.jetbrains.idea.maven.utils.MavenProgressIndicator;
 import org.jetbrains.idea.maven.utils.MavenUtil;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -101,8 +103,25 @@ public class PluginModuleImporter extends MavenImporter {
       VirtualFile basedir = mavenProject.getDirectoryFile();
       VirtualFile pluginXml = basedir.findFileByRelativePath(manifestLocation);
       if (pluginXml != null && pluginXml.exists()) {
-        config.setPluginXmlPathAndCreateDescriptorIfDoesntExist(pluginXml.getPath());
+        setPluginXmlPath(config, pluginXml.getPath());
       }
+    }
+  }
+
+  private void setPluginXmlPath(PluginBuildConfiguration config, String path) {
+    try {
+      Method m;
+      try {
+        // IntelliJ 12
+        m = config.getClass().getMethod("setPluginXmlPathAndCreateDescriptorIfDoesntExist", String.class);
+      } catch (NoSuchMethodException e) {
+        // IntelliJ 11
+        m = config.getClass().getMethod("setPluginXmlPath", String.class);
+      }
+
+      m.invoke(config, path);
+    } catch (Exception e) {
+      // No big deal, let's not set it.
     }
   }
 
