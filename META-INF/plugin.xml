@@ -1,10 +1,33 @@
 <idea-plugin version="2">
   <id>com.guidewire.build.ijdevkitmvn</id>
   <name>Intellij plugin development with Maven</name>
-  <description>Intellij plugin to support plugin development with Maven</description>
+  <description><![CDATA[
+    This plugin provides minimal support for developing IntelliJ plugins using IntelliJ
+    Maven integration.
+    <p/>
+    First, this plugin imports Maven module as plugin modules (PLUGIN_MODULE) if one of
+    the following is true:
+    <ul>
+      <li>Packaging is set to 'ij-plugin'</li>
+      <li>Packaging is set to 'jar' and 'ij.plugin' property is set to 'true'</li>
+      <li>Packaging is set to 'jar' and 'com.guidewire.build:ijplugin-maven-plugin'
+        Maven plugin is configured for the module
+      </li>
+    </ul>
+    <p/>
+    Second, it removes all dependencies which have groupId starting with 'com.jetbrains.intellij.'
+    after the import, assuming they would be provided through the IDEA SDK (so you can use
+    these dependencies during the command-line build and have them fulfilled by IDEA SDK
+    automatically when you import your module)
+    <p/>
+    Third, this plugin updates plugin descriptor location using either default location of
+    'META-INF/plugin.xml' or explicitly configured value taken from ijplugin-maven-plugin
+    configuration.
+
+  ]]></description>
   <version>${project.version}</version>
 
-  <vendor email="buildmaster-dev@guidewire.com.com">Guidewire Software</vendor>
+  <vendor email="buildmaster-dev@guidewire.com">Guidewire Software</vendor>
   <idea-version since-build="117.105"/>
 
   <depends>org.jetbrains.idea.maven</depends>

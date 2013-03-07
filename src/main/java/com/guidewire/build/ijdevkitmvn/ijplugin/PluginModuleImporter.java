@@ -11,14 +11,18 @@ import com.intellij.openapi.roots.OrderEnumerator;
 import com.intellij.openapi.roots.impl.libraries.ProjectLibraryTable;
 import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.roots.libraries.LibraryTable;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.Processor;
 import gnu.trove.THashSet;
+import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.idea.devkit.build.PluginBuildConfiguration;
 import org.jetbrains.idea.devkit.module.PluginModuleType;
 import org.jetbrains.idea.maven.importing.MavenImporter;
 import org.jetbrains.idea.maven.importing.MavenModifiableModelsProvider;
 import org.jetbrains.idea.maven.importing.MavenRootModelAdapter;
 import org.jetbrains.idea.maven.model.MavenConstants;
+import org.jetbrains.idea.maven.model.MavenPlugin;
 import org.jetbrains.idea.maven.project.MavenConsole;
 import org.jetbrains.idea.maven.project.MavenEmbeddersManager;
 import org.jetbrains.idea.maven.project.MavenProject;
@@ -45,6 +49,8 @@ public class PluginModuleImporter extends MavenImporter {
   public static final String IJPLUGIN_GROUP_ID = "com.guidewire.build";
   public static final String IJPLUGIN_ARTIFACT_ID = "ijplugin-maven-plugin";
   public static final String IJPLUGIN_PROPERTY = "ij.plugin";
+  public static final String IJPLUGIN_DESCRIPTOR_PROPERTY = "ij.pluginDescriptor";
+  public static final String MANIFEST_LOCATION_PARAMETER = "manifestLocation";
 
 
   public PluginModuleImporter() {
@@ -73,16 +79,57 @@ public class PluginModuleImporter extends MavenImporter {
     for (OrderEntry entry : rootModel.getOrderEntries()) {
       if (entry instanceof LibraryOrderEntry) {
         LibraryOrderEntry loe = (LibraryOrderEntry) entry;
-        if (loe.getLibraryName().startsWith("Maven: " + IDEA_SDK_PREFIX)) {
+        String libraryName = loe.getLibraryName();
+        if (libraryName != null && libraryName.startsWith("Maven: " + IDEA_SDK_PREFIX)) {
           rootModel.removeOrderEntry(entry);
           libraries.add(loe.getLibrary());
         }
       }
     }
 
+    updateManifestLocation(module, mavenProject);
+
     // Workaround for Maven plugin bug which does not allow newly created unused libraries to be properly removed
     // We schedule our own post-processing task that will clean out unused libraries
     scheduleAnalyzeLibraryTask(mavenProjectsProcessorTasks, libraries);
+  }
+
+  private void updateManifestLocation(Module module, MavenProject mavenProject) {
+    String manifestLocation = findManifestLocation(mavenProject);
+    PluginBuildConfiguration config = PluginBuildConfiguration.getInstance(module);
+    if (config != null) {
+      VirtualFile basedir = mavenProject.getDirectoryFile();
+      VirtualFile pluginXml = basedir.findFileByRelativePath(manifestLocation);
+      if (pluginXml != null && pluginXml.exists()) {
+        config.setPluginXmlPathAndCreateDescriptorIfDoesntExist(pluginXml.getPath());
+      }
+    }
+  }
+
+  private String findManifestLocation(MavenProject mavenProject) {
+    String manifestLocation = null;
+
+    // Try ijplugin-maven-plugin configuration
+    MavenPlugin plugin =
+            mavenProject.findPlugin(myPluginGroupID, myPluginArtifactID);
+    if (plugin != null) {
+      Element config = plugin.getConfigurationElement();
+      if (config != null) {
+        Element child = config.getChild(MANIFEST_LOCATION_PARAMETER);
+        manifestLocation = child.getText();
+      }
+    }
+
+    // Try ij.pluginDescriptor
+    if (manifestLocation == null) {
+      manifestLocation = mavenProject.getProperties().getProperty(IJPLUGIN_DESCRIPTOR_PROPERTY);
+    }
+
+    if (manifestLocation == null) {
+      // Default location
+      manifestLocation = "META-INF/plugin.xml";
+    }
+    return manifestLocation;
   }
 
   private void scheduleAnalyzeLibraryTask(List<MavenProjectsProcessorTask> mavenProjectsProcessorTasks, List<Library> libraries) {
@@ -154,9 +201,6 @@ public class PluginModuleImporter extends MavenImporter {
   /**
    * Enable importer for JAR projects with plugin attached to the lifecycle or for the projects
    * explicitly marked with "ij-plugin" packaging.
-   *
-   * @param mavenProject
-   * @return
    */
   @Override
   public boolean isApplicable(MavenProject mavenProject) {
