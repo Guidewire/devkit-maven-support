@@ -20,10 +20,12 @@
     these dependencies during the command-line build and have them fulfilled by IDEA SDK
     automatically when you import your module)
     <p/>
-    Third, this plugin updates plugin descriptor location using either default location of
-    'META-INF/plugin.xml' or explicitly configured value taken from ijplugin-maven-plugin
-    configuration.
-
+    Third, this plugin updates plugin descriptor location using one of the following:
+    <ul>
+      <li>Explicitly configured value in the ijplugin-maven-plugin configuration.</li>
+      <li>Value of the 'ij.pluginDescriptor' property in the POM</li>
+      <li>Default value of "META-INF/plugin.xml"</li>
+    </ul>
   ]]></description>
   <version>${project.version}</version>
 
