@@ -82,8 +82,8 @@
   </dependencies>
 
   <scm>
-    <developerConnection>scm:git:git@gh:build/devkit-maven-support.git</developerConnection>
-    <connection>scm:git://gh/build/devkit-maven-support</connection>
+    <developerConnection>scm:git:git@github.com:Guidewire/devkit-maven-support.git</developerConnection>
+    <connection>scm:git:https://github.com/Guidewire/devkit-maven-support.git</connection>
     <tag>HEAD</tag>
   </scm>
 
