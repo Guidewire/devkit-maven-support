@@ -34,7 +34,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.devkit.build.PluginBuildConfiguration;
 import org.jetbrains.idea.devkit.module.PluginModuleType;
 import org.jetbrains.idea.maven.importing.MavenImporter;
-import org.jetbrains.idea.maven.importing.MavenModifiableModelsProvider;
+import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
 import org.jetbrains.idea.maven.importing.MavenRootModelAdapter;
 import org.jetbrains.idea.maven.model.MavenConstants;
 import org.jetbrains.idea.maven.model.MavenPlugin;
@@ -74,11 +74,11 @@ public class PluginModuleImporter extends MavenImporter {
   }
 
   @Override
-  public void preProcess(Module module, MavenProject mavenProject, MavenProjectChanges mavenProjectChanges, MavenModifiableModelsProvider mavenModifiableModelsProvider) {
+  public void preProcess(Module module, MavenProject mavenProject, MavenProjectChanges mavenProjectChanges, IdeModifiableModelsProvider mavenModifiableModelsProvider) {
   }
 
   @Override
-  public void process(MavenModifiableModelsProvider modelsProvider,
+  public void process(IdeModifiableModelsProvider modelsProvider,
                       Module module,
                       MavenRootModelAdapter mavenRootModelAdapter,
                       MavenProjectsTree mavenProjectsTree,
