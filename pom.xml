@@ -5,7 +5,7 @@
 
   <groupId>com.guidewire.build</groupId>
   <artifactId>ijdevkitmvn</artifactId>
-  <version>0.3.11-SNAPSHOT</version>
+  <version>0.4.0-SNAPSHOT</version>
   <packaging>ij-plugin</packaging>
 
   <name>Intellij plugin development with Maven</name>
@@ -54,7 +54,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <ij.version>IC-117.798</ij.version>
+    <ij.version>IC-143.2370.31</ij.version>
   </properties>
 
   <dependencies>
