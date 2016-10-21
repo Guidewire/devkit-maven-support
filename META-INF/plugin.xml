@@ -5,7 +5,7 @@
   <version>${project.version}</version>
 
   <vendor email="buildmaster-dev@guidewire.com">Guidewire Software</vendor>
-  <idea-version since-build="117.105"/>
+  <idea-version since-build="143.2370"/>
 
   <depends>org.jetbrains.idea.maven</depends>
   <depends>DevKit</depends>
